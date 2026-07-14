@@ -31,10 +31,12 @@
       authDomain: "edumatch-84d93.firebaseapp.com",
       databaseURL: "https://edumatch-84d93-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "edumatch-84d93",
-      storageBucket: "dumatch-84d93.firebasestorage.app",
+      storageBucket: "edumatch-84d93.firebasestorage.app",
       messagingSenderId: "910376165445",
       appId: "1:910376165445:web:1ec6566d3a5fd2debb032c"
     };
+
+    // Initialize Firebase once below
     // ──────────────────────────────────────────────────────────────────────────
 
     let db;
@@ -55,7 +57,8 @@
       // Announcements — owner posts to Firebase, all users see banner
       try { onValue(ref(db, 'announcements/latest'), s => {
         const d = s.val();
-        if(d && d.msg) window._showAnnouncement(d.msg, d.date||'');
+        if(d && d.msg) window._renderAnnouncement({ active:true, message:d.msg, icon:d.icon||'📢' });
+        else window._renderAnnouncement(null);
       }); } catch(e){}
     }
 
@@ -525,18 +528,6 @@
 </div>
 
 <!-- NAV -->
-
-<!-- ANNOUNCEMENT BANNER (from Firebase) -->
-<div id="announce-bar" style="display:none;background:linear-gradient(135deg,#1a1a2e,#2d1b4e);color:#fff;padding:12px 48px;display:none;align-items:center;justify-content:space-between;gap:16px;position:relative;z-index:150;margin-top:65px;">
-  <div style="display:flex;align-items:center;gap:10px;">
-    <span style="font-size:1.2rem;">📢</span>
-    <div>
-      <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin-bottom:2px;">EduMatch Update</div>
-      <div id="announce-msg" style="font-size:.9rem;line-height:1.5;"></div>
-    </div>
-  </div>
-  <button onclick="dismissAnnouncement()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 14px;border-radius:100px;cursor:pointer;font-size:.8rem;white-space:nowrap;font-family:'DM Sans',sans-serif;">Dismiss ✕</button>
-</div>
 
 <nav>
   <div class="nav-logo">Edu<span>Match</span></div>
@@ -1545,7 +1536,7 @@ _Thank you for using EduMatch!_ 🙏`;
       _crossTarget = 'student';
       document.getElementById('cross-icon').textContent = '🎉';
       document.getElementById('cross-title').textContent = 'Your Profile is LIVE!';
-      document.getElementById('cross-msg').textContent = 'Great! Tutors in your area can already see your listing. Here's something else you might find useful:';
+      document.getElementById('cross-msg').textContent = "Great! Tutors in your area can already see your listing. Here's something else you might find useful:";
       document.getElementById('cross-extra-icon').textContent = '📚';
       document.getElementById('cross-extra-title').textContent = 'Need a tutor for your child too?';
       document.getElementById('cross-extra-msg').textContent = 'Post a student requirement and available tutors will contact you directly. Free and takes 1 minute!';
@@ -1554,10 +1545,10 @@ _Thank you for using EduMatch!_ 🙏`;
       _crossTarget = 'tutor';
       document.getElementById('cross-icon').textContent = '📚';
       document.getElementById('cross-title').textContent = 'Requirement Posted LIVE!';
-      document.getElementById('cross-msg').textContent = 'Tutors near you will contact you soon. While you wait, here's an opportunity:';
+      document.getElementById('cross-msg').textContent = "Tutors near you will contact you soon. While you wait, here's an opportunity:";
       document.getElementById('cross-extra-icon').textContent = '🧑‍🏫';
       document.getElementById('cross-extra-title').textContent = 'Are you also a tutor?';
-      document.getElementById('cross-extra-msg').textContent = 'List yourself as a tutor on EduMatch and earn ₹10,000+ per month. It's completely free to join!';
+      document.getElementById('cross-extra-msg').textContent = "List yourself as a tutor on EduMatch and earn ₹10,000+ per month. It's completely free to join!";
       document.getElementById('cross-action-btn').textContent = '🚀 Register as Tutor →';
     }
     setTimeout(() => openModal('cross'), 1500);
@@ -1962,22 +1953,6 @@ _Thank you for using EduMatch!_ 🙏`;
   }
 
 
-  // ── ANNOUNCEMENT SYSTEM ──────────────────────────────────────────────────
-  let _lastAnnounce = '';
-  window._showAnnouncement = function(msg, date) {
-    const seen = localStorage.getItem('em_announce_seen');
-    const key  = msg + date;
-    if(seen === key) return; // already dismissed
-    _lastAnnounce = key;
-    document.getElementById('announce-msg').textContent = msg;
-    const bar = document.getElementById('announce-bar');
-    bar.style.display = 'flex';
-  };
-  function dismissAnnouncement() {
-    document.getElementById('announce-bar').style.display = 'none';
-    localStorage.setItem('em_announce_seen', _lastAnnounce);
-  }
-
   // ── CROSS PROMOTION ───────────────────────────────────────────────────────
   let _lastRegRole = '';
   function showCrossPromo(role) {
@@ -1985,7 +1960,7 @@ _Thank you for using EduMatch!_ 🙏`;
     if(role === 'Tutor') {
       document.getElementById('cross-icon').textContent = '📚';
       document.getElementById('cross-title').textContent = 'Do you also need a tutor?';
-      document.getElementById('cross-body').textContent = 'Are you looking for a tutor for your child or someone you know? Post a student requirement too — it's free and goes live instantly!';
+      document.getElementById('cross-body').textContent = "Are you looking for a tutor for your child or someone you know? Post a student requirement too — it's free and goes live instantly!";
       document.getElementById('cross-yes').textContent = '📢 Post Student Requirement';
     } else {
       document.getElementById('cross-icon').textContent = '🎓';
@@ -2036,7 +2011,7 @@ _Thank you for using EduMatch!_ 🙏`;
     if(!window._dbReady){ alert('Firebase not connected.'); return; }
     const { ref, remove } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
     await remove(ref(window._db, 'announcements/latest'));
-    document.getElementById('announce-bar').style.display = 'none';
+    window._renderAnnouncement(null);
     showToast('Announcement cleared');
   }
 
@@ -2066,18 +2041,6 @@ _Thank you for using EduMatch!_ 🙏`;
     navigator.clipboard.writeText(allNums).then(() => showToast('All numbers copied! ✅'));
   }
 
-  // ── ANNOUNCE LISTENER for localStorage fallback ───────────────────────────
-  window.addEventListener('DOMContentLoaded', () => {
-    // Check localStorage for stored announcement (for non-Firebase mode)
-    const stored = localStorage.getItem('em_announcement');
-    if(stored) {
-      try {
-        const d = JSON.parse(stored);
-        if(d.msg) window._showAnnouncement(d.msg, d.date||'');
-      } catch(e){}
-    }
-  });
-
   // Scroll-reveal
   const stepObserver = new IntersectionObserver(entries=>
     entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:.15}
@@ -2086,4 +2049,3 @@ _Thank you for using EduMatch!_ 🙏`;
 </script>
 </body>
 </html>
-
