@@ -51,15 +51,34 @@
     }
 
     if (window._dbReady) {
-      onValue(ref(db, 'tutors'),   s => window._renderTutors(objToArr(s.val())));
-      onValue(ref(db, 'students'), s => window._renderStudents(objToArr(s.val())));
-      onValue(ref(db, 'reviews'),  s => window._renderReviews(objToArr(s.val())));
-      // Announcements — owner posts to Firebase, all users see banner
-      try { onValue(ref(db, 'announcements/latest'), s => {
-        const d = s.val();
-        if(d && d.msg) window._renderAnnouncement({ active:true, message:d.msg, icon:d.icon||'📢' });
-        else window._renderAnnouncement(null);
-      }); } catch(e){}
+      // Start listeners only after the full page script has defined all renderer functions.
+      window.addEventListener('DOMContentLoaded', () => {
+        onValue(ref(db, 'tutors'), s => {
+          const data = objToArr(s.val());
+          if (typeof window._renderTutors === 'function') window._renderTutors(data);
+        }, e => console.error('Tutor load error:', e));
+
+        onValue(ref(db, 'students'), s => {
+          const data = objToArr(s.val());
+          if (typeof window._renderStudents === 'function') window._renderStudents(data);
+        }, e => console.error('Student load error:', e));
+
+        onValue(ref(db, 'reviews'), s => {
+          const data = objToArr(s.val());
+          if (typeof window._renderReviews === 'function') window._renderReviews(data);
+        }, e => console.error('Review load error:', e));
+
+        // Announcements — owner posts to Firebase, all users see banner
+        try {
+          onValue(ref(db, 'announcements/latest'), s => {
+            const d = s.val();
+            if (typeof window._renderAnnouncement === 'function') {
+              if(d && d.msg) window._renderAnnouncement({ active:true, message:d.msg, icon:d.icon||'📢' });
+              else window._renderAnnouncement(null);
+            }
+          });
+        } catch(e) { console.error('Announcement load error:', e); }
+      });
     }
 
     function objToArr(obj) {
@@ -1625,10 +1644,29 @@ _Thank you for using EduMatch!_ 🙏`;
   }
 
   // ── RENDER: TUTORS ─────────────────────────────────────────────────────────
+  function normalizeTutor(t) {
+    const subjects = Array.isArray(t.subjects)
+      ? t.subjects
+      : [t.subject || t.subjects || ''].filter(Boolean);
+    const classes = Array.isArray(t.classes)
+      ? t.classes
+      : [t.classRange || t.classLevel || t.classes || ''].filter(Boolean);
+    return {
+      ...t,
+      subjects,
+      classes,
+      subject: t.subject || subjects[0] || '',
+      classRange: t.classRange || classes.join(', '),
+      meet: t.meet || t.meetLink || '',
+      meetLink: t.meetLink || t.meet || ''
+    };
+  }
+
   window._renderTutors = function(list) {
-    allTutors = list;
-    _drawTutors(list);
-    document.getElementById('stat-tutors').textContent = list.length;
+    const normalized = (Array.isArray(list) ? list : []).map(normalizeTutor);
+    allTutors = normalized;
+    _drawTutors(normalized);
+    document.getElementById('stat-tutors').textContent = normalized.length;
   };
   function _drawTutors(list) {
     const grid = document.getElementById('tutors-grid');
