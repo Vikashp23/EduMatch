@@ -51,34 +51,27 @@
     }
 
     if (window._dbReady) {
-      // Start listeners only after the full page script has defined all renderer functions.
       window.addEventListener('DOMContentLoaded', () => {
         onValue(ref(db, 'tutors'), s => {
-          const data = objToArr(s.val());
-          if (typeof window._renderTutors === 'function') window._renderTutors(data);
+          const list = objToArr(s.val());
+          if (typeof window._renderTutors === 'function') window._renderTutors(list);
         }, e => console.error('Tutor load error:', e));
-
         onValue(ref(db, 'students'), s => {
-          const data = objToArr(s.val());
-          if (typeof window._renderStudents === 'function') window._renderStudents(data);
+          const list = objToArr(s.val());
+          if (typeof window._renderStudents === 'function') window._renderStudents(list);
         }, e => console.error('Student load error:', e));
-
         onValue(ref(db, 'reviews'), s => {
-          const data = objToArr(s.val());
-          if (typeof window._renderReviews === 'function') window._renderReviews(data);
+          const list = objToArr(s.val());
+          if (typeof window._renderReviews === 'function') window._renderReviews(list);
         }, e => console.error('Review load error:', e));
-
-        // Announcements — owner posts to Firebase, all users see banner
-        try {
-          onValue(ref(db, 'announcements/latest'), s => {
-            const d = s.val();
-            if (typeof window._renderAnnouncement === 'function') {
-              if(d && d.msg) window._renderAnnouncement({ active:true, message:d.msg, icon:d.icon||'📢' });
-              else window._renderAnnouncement(null);
-            }
-          });
-        } catch(e) { console.error('Announcement load error:', e); }
-      });
+        try { onValue(ref(db, 'announcements/latest'), s => {
+          const d = s.val();
+          if (typeof window._renderAnnouncement === 'function') {
+            if(d && d.msg) window._renderAnnouncement({ active:true, message:d.msg, icon:d.icon||'📢' });
+            else window._renderAnnouncement(null);
+          }
+        }); } catch(e){ console.error('Announcement load error:', e); }
+      }, { once:true });
     }
 
     function objToArr(obj) {
@@ -971,17 +964,6 @@
         <div class="class-check-item" data-value="Class 9" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span>Class 9</div>
         <div class="class-check-item" data-value="Class 10" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span>Class 10</div>
       </div>
-        <div class="class-check-item" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span><span class="ck-label">Class 2</span></div>
-        <div class="class-check-item" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span><span class="ck-label">Class 3</span></div>
-        <div class="class-check-item" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span><span class="ck-label">Class 4</span></div>
-        <div class="class-check-item" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span><span class="ck-label">Class 5</span></div>
-        <div class="class-check-item" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span><span class="ck-label">Class 6</span></div>
-        <div class="class-check-item" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span><span class="ck-label">Class 7</span></div>
-        <div class="class-check-item" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span><span class="ck-label">Class 8</span></div>
-        <div class="class-check-item" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span><span class="ck-label">Class 9</span></div>
-        <div class="class-check-item" onclick="toggleClass(this,'t-classes')"><span class="ck">✓</span><span class="ck-label">Class 10</span></div>
-      </div>
-    </div>
     <div class="mf-row">
       <div class="mf-group"><label>Experience</label>
         <select id="t-exp"><option>Less than 1 year</option><option>1–3 years</option><option>3–5 years</option><option>5+ years</option></select>
@@ -1645,19 +1627,14 @@ _Thank you for using EduMatch!_ 🙏`;
 
   // ── RENDER: TUTORS ─────────────────────────────────────────────────────────
   function normalizeTutor(t) {
-    const subjects = Array.isArray(t.subjects)
-      ? t.subjects
-      : [t.subject || t.subjects || ''].filter(Boolean);
-    const classes = Array.isArray(t.classes)
-      ? t.classes
-      : [t.classRange || t.classLevel || t.classes || ''].filter(Boolean);
+    const subjects = Array.isArray(t.subjects) ? t.subjects : [t.subject || t.subjects || ''].filter(Boolean);
+    const classes = Array.isArray(t.classes) ? t.classes : [t.classRange || t.classLevel || t.classes || ''].filter(Boolean);
     return {
       ...t,
       subjects,
       classes,
       subject: t.subject || subjects[0] || '',
       classRange: t.classRange || classes.join(', '),
-      meet: t.meet || t.meetLink || '',
       meetLink: t.meetLink || t.meet || ''
     };
   }
@@ -1896,7 +1873,8 @@ _Thank you for using EduMatch!_ 🙏`;
   // ── SUBMIT: TUTOR MODAL ────────────────────────────────────────────────────
   async function submitTutorModal() {
     const name=v('t-name'), phone=v('t-phone');
-    const subjects=getSelectedClasses('t-subjects');
+    const subjectValue=v('t-subject');
+    const subjects=subjectValue ? [subjectValue] : [];
     const classes=getSelectedClasses('t-classes');
     if(!name||!phone){alert('Please fill in Name and Phone.');return;}
     if(phone.replace(/\D/g,'').length<10){alert('Please enter a valid 10-digit phone number.');return;}
@@ -1906,13 +1884,20 @@ _Thank you for using EduMatch!_ 🙏`;
     btn.disabled=true;btn.textContent='Going live…';
     const tEmail = v('t-email');
     const tData = {name,phone,email:tEmail,subjects,classes,exp:v('t-exp'),mode:v('t-mode'),rate:v('t-rate'),location:v('t-location'),bio:v('t-bio'),meetLink:v('t-meet')};
-    await window._submitTutor(tData);
-    await sendAllNotifications('Tutor', tData);
+    try {
+      await window._submitTutor(tData);
+      await sendAllNotifications('Tutor', tData);
+    } catch (e) {
+      console.error('Tutor submission error:', e);
+      alert('Could not submit the profile. Please check your internet/Firebase connection and try again.');
+      btn.disabled=false;btn.textContent='🚀 Go Live on EduMatch';
+      return;
+    }
     closeModal('tutor');
     showToast(`Welcome ${name}! Profile live + notifications sent 🎉`);
     btn.disabled=false;btn.textContent='🚀 Go Live on EduMatch';
     clearFields(['t-name','t-phone','t-email','t-rate','t-location','t-bio','t-meet']);
-    clearSelectedClasses('t-subjects');clearSelectedClasses('t-classes');
+    document.getElementById('t-subject').value='';clearSelectedClasses('t-classes');
     document.getElementById('tutors').scrollIntoView({behavior:'smooth'});
     showCrossPromo('Tutor');
   }
